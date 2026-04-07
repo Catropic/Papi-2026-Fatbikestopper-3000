@@ -1,15 +1,35 @@
 #===========================================================================
 #                      simpele flappybird game
 #===========================================================================
-
+from gpiozero import LED
+from gpiozero import PWMOutputDevice
+from gpiozero import DigitalInputDevice
+import RPi.GPIO as GPIO
 import pygame
 import random
 import sys
+import time
+
+# ================== GPIO setup ==================
+try:
+    GPIO.setmode(GPIO.BOARD)
+    GPIO.setwarnings(False)     
+   
+    PIN_GAME = 24
+    PIN_ESC = 35                                                                                                                                                                                                                                                                                                          
+    game_button_pressed = 0
+    GPIO.setup(PIN_GAME, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(PIN_ESC, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    print(f"GPIO knoppen succesvol ingesteld (Pin {PIN_GAME} en {PIN_ESC})")
+    gpio_available = True
+except ImportError:
+    print("GPIO niet beschikbaar (normaal op laptop). We gebruiken muis/toetsenbord.")
+    gpio_available = False
 
 pygame.init()
 
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-pygame.display.set_caption("Flappy Bird - Fatbike Beloning")
+pygame.display.set_caption("wallahi geef mij snoep")
 
 SCREEN_WIDTH = screen.get_width()
 SCREEN_HEIGHT = screen.get_height()
@@ -86,22 +106,48 @@ def run_flappy_bird():
    
     reset_game()        # start het spel
     running = True
+    counter=0
 
     while running:
         current_time = pygame.time.get_ticks()
+        
+        #GPIO input
+        if GPIO.input(PIN_GAME) != GPIO.LOW:
+            game_button_pressed = True
+        else:
+            game_button_pressed = False
+        if GPIO.input(PIN_ESC) != GPIO.LOW:
+            esc_button_pressed = True
+        else:
+            esc_button_pressed = False
 
+            
         # events
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    pygame.quit()
-                    sys.exit()
-
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                    return score
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE or game_button_pressed:
                 if not game_over:
                     bird_velocity = FLAP_STRENGTH
                 else:
                     reset_game()
+                    
+        if game_button_pressed:
+            if (not game_over) and counter >=2:
+                bird_velocity = FLAP_STRENGTH
+                counter=0
+            elif game_over:
+                reset_game()
+        else:
+            counter+=1
+                    
+        if esc_button_pressed:
+            time.sleep(1)
+            return score
+                    
+        
+        
 
         # game logic
         if not game_over:
@@ -161,7 +207,7 @@ def run_flappy_bird():
 
         pygame.display.flip()
         clock.tick(60)
-
+    
     return score
 
 # ====================== start ======================
@@ -170,3 +216,4 @@ if __name__ == "__main__":
     print(f"Spel afgelopen! Score: {final_score}")
 
 __all__ = ['run_flappy_bird']
+
