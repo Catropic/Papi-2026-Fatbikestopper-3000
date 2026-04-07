@@ -10,19 +10,19 @@ import time
 # ================== GPIO setup ==================
 try:
     GPIO.setmode(GPIO.BOARD)
-    GPIO.setwarnings(False)
+    GPIO.setwarnings(False)     
    
-    PIN_GAME = 5
-    PIN_ESC = 3
-    GPIO.setmode(GPIO.BOARD)
+    PIN_GAME = 24
+    PIN_ESC = 35                                                                                                                                                                                                                                                                                                           
+                                             
     GPIO.setup(38, GPIO.OUT)
     servo=GPIO.PWM(38, 50)
-    buzzer = PWMOutputDevice(16)
+#     buzzer = PWMOutputDevice(16)
     sensor = DigitalInputDevice(12)
     
     GPIO.setup(PIN_GAME, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.setup(PIN_ESC, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    print("GPIO knoppen succesvol ingesteld (Pin 2 en 3)")
+    print(f"GPIO knoppen succesvol ingesteld (Pin {PIN_GAME} en {PIN_ESC})")
     gpio_available = True
 except ImportError:
     print("GPIO niet beschikbaar (normaal op laptop). We gebruiken muis/toetsenbord.")
@@ -66,6 +66,7 @@ servo.start(0)
 servo.ChangeDutyCycle(10) # left -90 deg position
 sleep(1)
 servo.stop()
+
 
 def illegal():
     global counter
@@ -132,11 +133,26 @@ def save_highscore(new_score):
     return current_high
 
 highscore = load_highscore()
-button_rect = pygame.Rect(250, 300, 450, 80)
+button_rect = pygame.Rect(250, 300, 450, 80) #mark is ech heel raar en bart ook en vincent ook en jurre ook en tom ook en gabriel niet
 
 # ================== main loop ==================
 while True:
     mouse_clicked = False
+    
+    #GPIO input
+    if gpio_available:
+        if GPIO.input(PIN_GAME) != GPIO.LOW:
+            game_button_pressed = True
+        else:
+            game_button_pressed = False
+        if GPIO.input(PIN_ESC) != GPIO.LOW:
+            esc_button_pressed = True
+        else:
+            esc_button_pressed = False
+    else:
+        game_button_pressed = False
+        esc_button_pressed = False
+        
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -151,14 +167,10 @@ while True:
         if event.type == pygame.MOUSEBUTTONDOWN and game_state == "menu":
             if button_rect.collidepoint(event.pos):
                 mouse_clicked = True
-
-    #GPIO input
-    if gpio_available:
-        game_button_pressed = GPIO.input(PIN_GAME) == GPIO.LOW
-        esc_button_pressed = GPIO.input(PIN_ESC) == GPIO.LOW
-    else:
-        game_button_pressed = False
-        esc_button_pressed = False
+                
+    if game_button_pressed:
+        mouse_clicked=True
+    
 
     screen.fill((0, 0, 0))
     
@@ -170,14 +182,14 @@ while True:
         laatsteLoop=0
         totaal=0
     laatsteLoop=laatsteLoop+1
-
+    
     # ================== MENU ==================
     if game_state == "menu":
         warning_start = None  # reset timer
 
         if playtime_credits >= MIN_CREDITS_TO_PLAY:
             button_color = (0, 0, 255)
-            button_text_str = "Druk knop in om te spelen"
+            button_text_str = "druk knop om te spelen"
         else:
             button_color = (100, 100, 100)
             button_text_str = f"nog {int(MIN_CREDITS_TO_PLAY - playtime_credits)} credits"
@@ -195,11 +207,12 @@ while True:
         hs_text = font_small.render(f"Highscore: {highscore}", True, (255, 255, 100))
         screen.blit(hs_text, (50, 100))
 
-        if (game_button_pressed or mouse_clicked) and playtime_credits >= MIN_CREDITS_TO_PLAY:
+        if mouse_clicked and playtime_credits >= 1:
+            print("mark houdt van mannen")
             game_state = "game"
-
+    
     # ================== GAME ==================
-    elif game_state == "game":
+    if game_state == "game":
         if totaal > 3:
             warning = font_small.render("Je moet stilstaan om te spelen!", True, (255, 0, 0))
             screen.blit(warning, (150, 250))
@@ -232,12 +245,14 @@ while True:
                 screen.blit(error_text, (200, 200))
                 pygame.time.wait(1500)
                 game_state = "menu"
-
+    
     # ================== esc ==================
     if esc_button_pressed:
+        print("hoi???")
         if game_state == "game":
             game_state = "menu"
-        else:
+            print("gabrilbalzak")
+        elif game_state == "menu":
             pygame.quit()
             sys.exit()
         time.sleep(0.3)
