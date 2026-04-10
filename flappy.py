@@ -13,11 +13,10 @@ import time
 # ================== GPIO setup ==================
 try:
     GPIO.setmode(GPIO.BOARD)
-    GPIO.setwarnings(False)     
+    GPIO.setwarnings(False)    
    
     PIN_GAME = 24
     PIN_ESC = 35                                                                                                                                                                                                                                                                                                          
-    game_button_pressed = 0
     GPIO.setup(PIN_GAME, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.setup(PIN_ESC, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     print(f"GPIO knoppen succesvol ingesteld (Pin {PIN_GAME} en {PIN_ESC})")
@@ -28,11 +27,15 @@ except ImportError:
 
 pygame.init()
 
+# ================== SCREEN SETUP ==================
+GAME_WIDTH = 800
+GAME_HEIGHT = 480
+
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 pygame.display.set_caption("wallahi geef mij snoep")
 
-SCREEN_WIDTH = screen.get_width()
-SCREEN_HEIGHT = screen.get_height()
+SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
+game_surface = pygame.Surface((GAME_WIDTH, GAME_HEIGHT))
 
 clock = pygame.time.Clock()
 
@@ -43,15 +46,15 @@ WHITE = (255, 255, 255)
 RED = (200, 0, 0)
 
 #=================settings===============
-GRAVITY = 0.55
-FLAP_STRENGTH = -11
+GRAVITY = 0.40
+FLAP_STRENGTH = -8
 PIPE_SPEED = -4.5
-PIPE_GAP = 340
+PIPE_GAP = 160
 PIPE_WIDTH = 90
-PIPE_FREQUENCY = 1350
+PIPE_FREQUENCY = 2500
 
-BIRD_X = SCREEN_WIDTH // 6
-BIRD_SIZE = 65
+BIRD_X = GAME_WIDTH // 6
+BIRD_SIZE = 40
 
 # ======================global variables======================
 bird_y = 0
@@ -65,9 +68,8 @@ game_over = False
 # ======================functions======================
 
 def reset_game():
-    """restart the entire game"""
     global bird_y, bird_velocity, pipes, score, last_pipe_time, game_over
-    bird_y = SCREEN_HEIGHT // 3
+    bird_y = GAME_HEIGHT // 3
     bird_velocity = 0
     pipes = []
     score = 0
@@ -76,25 +78,25 @@ def reset_game():
 
 
 def draw_bird():
-    pygame.draw.rect(screen, YELLOW, (BIRD_X, int(bird_y), BIRD_SIZE, BIRD_SIZE))
+    pygame.draw.rect(game_surface, YELLOW, (BIRD_X, int(bird_y), BIRD_SIZE, BIRD_SIZE))
 
 
 def draw_pipes():
     for pipe in pipes:
-        pygame.draw.rect(screen, GREEN, (pipe['x'], 0, PIPE_WIDTH, pipe['top_height']))
+        pygame.draw.rect(game_surface, GREEN, (pipe['x'], 0, PIPE_WIDTH, pipe['top_height']))
         bottom_y = pipe['top_height'] + PIPE_GAP
-        pygame.draw.rect(screen, GREEN, (pipe['x'], bottom_y, PIPE_WIDTH, SCREEN_HEIGHT - bottom_y))
+        pygame.draw.rect(game_surface, GREEN, (pipe['x'], bottom_y, PIPE_WIDTH, GAME_HEIGHT - bottom_y))
 
 
 def check_collision():
     bird_rect = pygame.Rect(BIRD_X, int(bird_y), BIRD_SIZE, BIRD_SIZE)
    
-    if bird_y < 0 or bird_y + BIRD_SIZE > SCREEN_HEIGHT:
+    if bird_y < 0 or bird_y + BIRD_SIZE > GAME_HEIGHT:
         return True
    
     for pipe in pipes:
         top_pipe = pygame.Rect(pipe['x'], 0, PIPE_WIDTH, pipe['top_height'])
-        bottom_pipe = pygame.Rect(pipe['x'], pipe['top_height'] + PIPE_GAP, PIPE_WIDTH, SCREEN_HEIGHT)
+        bottom_pipe = pygame.Rect(pipe['x'], pipe['top_height'] + PIPE_GAP, PIPE_WIDTH, GAME_HEIGHT)
         if bird_rect.colliderect(top_pipe) or bird_rect.colliderect(bottom_pipe):
             return True
     return False
@@ -104,93 +106,81 @@ def check_collision():
 def run_flappy_bird():
     global bird_y, bird_velocity, pipes, score, last_pipe_time, game_over
    
-    reset_game()        # start het spel
+    reset_game()
     running = True
-    counter=0
+    counter = 0
 
     while running:
         current_time = pygame.time.get_ticks()
-        
-        #GPIO input
-        if GPIO.input(PIN_GAME) != GPIO.LOW:
-            game_button_pressed = True
+       
+        # GPIO input
+        if gpio_available:
+            game_button_pressed = GPIO.input(PIN_GAME) != GPIO.LOW
+            esc_button_pressed = GPIO.input(PIN_ESC) != GPIO.LOW
         else:
             game_button_pressed = False
-        if GPIO.input(PIN_ESC) != GPIO.LOW:
-            esc_button_pressed = True
-        else:
             esc_button_pressed = False
 
-            
         # events
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return score
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE or game_button_pressed:
-                if not game_over:
-                    bird_velocity = FLAP_STRENGTH
-                else:
-                    reset_game()
-                    
+                if event.key == pygame.K_SPACE:
+                    if not game_over:
+                        bird_velocity = FLAP_STRENGTH
+                    else:
+                        reset_game()
+
         if game_button_pressed:
-            if (not game_over) and counter >=2:
+            if (not game_over) and counter >= 2:
                 bird_velocity = FLAP_STRENGTH
-                counter=0
+                counter = 0
             elif game_over:
                 reset_game()
         else:
-            counter+=1
-                    
+            counter += 1
+                   
         if esc_button_pressed:
             time.sleep(1)
             return score
-                    
-        
-        
 
         # game logic
         if not game_over:
             bird_velocity += GRAVITY
             bird_y += bird_velocity
 
-            # pipe generation
             if current_time - last_pipe_time > PIPE_FREQUENCY:
-                top_height = random.randint(100, SCREEN_HEIGHT - PIPE_GAP - 200)
-                pipes.append({'x': SCREEN_WIDTH + 50, 'top_height': top_height})
+                top_height = random.randint(50, GAME_HEIGHT - PIPE_GAP - 50)
+                pipes.append({'x': GAME_WIDTH + 50, 'top_height': top_height})
                 last_pipe_time = current_time
 
-            # pipes move
             for pipe in pipes[:]:
                 pipe['x'] += PIPE_SPEED
                 if pipe['x'] < -PIPE_WIDTH:
                     pipes.remove(pipe)
 
-            # score
             for pipe in pipes:
                 if pipe['x'] + PIPE_WIDTH < BIRD_X and not pipe.get('scored', False):
                     score += 1
                     pipe['scored'] = True
 
-            # collision
             if check_collision():
                 game_over = True
 
-        # drawing the assets
-        screen.fill(BLACK)
+        # drawing
+        game_surface.fill(BLACK)
         draw_pipes()
         draw_bird()
 
-        # score text
         try:
             font_big = pygame.font.Font("digital_font.ttf", 80)
         except:
             font_big = pygame.font.SysFont("arial", 80)
        
         score_text = font_big.render(f"Score: {score}", True, WHITE)
-        screen.blit(score_text, (SCREEN_WIDTH // 2 - 180, 40))
+        game_surface.blit(score_text, (GAME_WIDTH // 2 - 180, 40))
 
-        # game Over
         if game_over:
             try:
                 font_big = pygame.font.Font("digital_font.ttf", 100)
@@ -202,13 +192,17 @@ def run_flappy_bird():
             go_text = font_big.render("GAME OVER", True, RED)
             restart_text = font_small.render("Druk SPATIE om opnieuw te spelen", True, WHITE)
            
-            screen.blit(go_text, (SCREEN_WIDTH // 2 - 320, SCREEN_HEIGHT // 2 - 120))
-            screen.blit(restart_text, (SCREEN_WIDTH // 2 - 280, SCREEN_HEIGHT // 2 + 40))
+            game_surface.blit(go_text, (GAME_WIDTH // 2 - 320, GAME_HEIGHT // 2 - 120))
+            game_surface.blit(restart_text, (GAME_WIDTH // 2 - 280, GAME_HEIGHT // 2 + 40))
 
+        scaled_surface = pygame.transform.scale(game_surface, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        screen.blit(scaled_surface, (0, 0))
         pygame.display.flip()
+
         clock.tick(60)
-    
+   
     return score
+
 
 # ====================== start ======================
 if __name__ == "__main__":
@@ -216,4 +210,3 @@ if __name__ == "__main__":
     print(f"Spel afgelopen! Score: {final_score}")
 
 __all__ = ['run_flappy_bird']
-
