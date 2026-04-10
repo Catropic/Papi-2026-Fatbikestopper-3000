@@ -10,7 +10,7 @@ import time
 # ================== GPIO setup ==================
 try:
     GPIO.setmode(GPIO.BOARD)
-    GPIO.setwarnings(False)     
+#     GPIO.setwarnings(False)     
    
     PIN_GAME = 24
     PIN_ESC = 35                                                                                                                                                                                                                                                                                                           
@@ -29,7 +29,7 @@ except ImportError:
     gpio_available = False
 
 pygame.init()
-screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+screen = pygame.display.set_mode((800,480))
 pygame.display.set_caption("fatbike interface")
 
 clock = pygame.time.Clock()
@@ -39,6 +39,9 @@ font_small = pygame.font.Font("digital_font.ttf", 40)
 
 SCREEN_WIDTH = screen.get_width()
 SCREEN_HEIGHT = screen.get_height()
+
+# SCREEN_WIDTH = 800
+# SCREEN_HEIGHT = 480
 
 # ================== variables ==================
 game_state = "menu"
@@ -63,7 +66,7 @@ speed_value = 0
 speed_direction = 0.1
 
 servo.start(0)
-servo.ChangeDutyCycle(10) # left -90 deg position
+servo.ChangeDutyCycle(3) # left -90 deg position
 sleep(1)
 servo.stop()
 
@@ -74,7 +77,7 @@ def illegal():
     counter += 1
     if counter >= 3:
         servo.start(0)
-        servo.ChangeDutyCycle(3) # left -90 deg position
+        servo.ChangeDutyCycle(10) # left -90 deg position
         sleep(1)
         servo.stop()
         print(f"ILLEGAAL!!! je gaat te hard")
