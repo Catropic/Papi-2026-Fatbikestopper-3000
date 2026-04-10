@@ -136,7 +136,7 @@ def save_highscore(new_score):
     return current_high
 
 highscore = load_highscore()
-button_rect = pygame.Rect(250, 300, 450, 80) #mark is ech heel raar en bart ook en vincent ook en jurre ook en tom ook en gabriel niet
+button_rect = pygame.Rect(250, 300, 450, 80) 
 
 # ================== main loop ==================
 while True:
@@ -211,7 +211,6 @@ while True:
         screen.blit(hs_text, (50, 100))
 
         if mouse_clicked and playtime_credits >= 1:
-            print("mark houdt van mannen")
             game_state = "game"
     
     # ================== GAME ==================
@@ -251,7 +250,6 @@ while True:
     
     # ================== esc ==================
     if esc_button_pressed:
-        print("hoi???")
         if game_state == "game":
             game_state = "menu"
         elif game_state == "menu":
