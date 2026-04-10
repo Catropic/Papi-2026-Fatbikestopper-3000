@@ -254,7 +254,6 @@ while True:
         print("hoi???")
         if game_state == "game":
             game_state = "menu"
-            print("gabrilbalzak")
         elif game_state == "menu":
             pygame.quit()
             sys.exit()
